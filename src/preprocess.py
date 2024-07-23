@@ -86,9 +86,7 @@ def split_train_test(df: pd.DataFrame, predictors: list[str],
         tuple: A tuple containing X_train, X_test, y_train, and y_test arrays.
     """
     n_train = round(training_ratio * df.shape[0])
-
     X, y = df[predictors].values, df[target].values
-
     return X[:n_train], X, y[:n_train], y
 
 
@@ -104,15 +102,8 @@ def scale_data(X_train: np.ndarray, y_train: np.ndarray, mode: str) -> tuple[np.
     Returns:
         tuple: A tuple containing the scaled X_train, scaled y_train, X scaler, and y scaler.
     """
-    if mode == 'minmax':
-        x_scaler = MinMaxScaler()
-        y_scaler = MinMaxScaler()
-    elif mode == 'standard':
-        x_scaler = StandardScaler()
-        y_scaler = StandardScaler()
-    else:
-        raise f"Unknown mode {mode}, to scale the data"
-
+    scaler_class = MinMaxScaler if mode == 'minmax' else StandardScaler
+    x_scaler, y_scaler = scaler_class(), scaler_class()
     X_train_scaled, y_train_scaled = x_scaler.fit_transform(X_train), y_scaler.fit_transform(y_train)
 
     return X_train_scaled, y_train_scaled, x_scaler, y_scaler
