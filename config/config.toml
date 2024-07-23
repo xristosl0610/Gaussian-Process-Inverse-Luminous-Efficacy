@@ -1,0 +1,23 @@
+datafile = "fivemin_data.csv"
+drop_cols = ["wmo_hr_sun_dur"]
+
+[rename_dict]
+"Unnamed: 0" = "datetime"
+"sol altitude" = "sol_alt"
+"sol azimuth" = "sol_az"
+
+[filter_bounds]
+days = [1, 1]
+month = 3
+year = 2015
+
+predictors = ["minutes", "GHE"]
+target = ["GHI"]
+training_ratio = 0.7
+scaling_mode = "standard"
+
+[gpr_params]
+alpha = 1.0
+n_restarts_optimizer = 20
+
+model_path = "gpr_model.joblib"
