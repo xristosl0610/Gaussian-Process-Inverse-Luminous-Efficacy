@@ -9,12 +9,12 @@ class Config:
     datafile: str
     drop_cols: list[str]
     rename_dict: dict[str, str]
-    filter_bounds: dict[str, Any]
+    filter_bounds: dict[str, list[int, int] | int]
     predictors: list[str]
     target: list[str]
     training_ratio: float
     scaling_mode: str
-    gpr_params: dict[str, Any]
+    gpr_params: dict[str, int | float]
     model_path: str
 
 
