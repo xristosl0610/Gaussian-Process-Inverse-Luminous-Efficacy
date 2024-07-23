@@ -1,6 +1,7 @@
 from pathlib import Path
 
 ROOTDIR = Path(__file__).parent.parent
+CONFIGDIR = ROOTDIR.joinpath('config')
 SRCDIR = ROOTDIR.joinpath("src")
 DATADIR = ROOTDIR.joinpath("data")
 OUTPUTDIR = ROOTDIR.joinpath("output")
