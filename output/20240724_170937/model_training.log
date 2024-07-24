@@ -1,0 +1,4 @@
+2024-07-24 17:09:37,911 - INFO - Configuration settings: Config(datafiles=DatafilesConfig(source='fivemin_data.csv', drop_cols=['wmo_hr_sun_dur'], rename_dict={'Unnamed: 0': 'datetime', 'sol altitude': 'sol_alt', 'sol azimuth': 'sol_az'}, model_path='gpr_model.joblib'), filter=FilterBoundsConfig(days=[1, 1], month=3, year=2015), train_test=TrainTestConfig(predictors=['minutes', 'GHE'], target=['GHI'], training_ratio=0.7, scaling_mode='standard'), gpr=GaussianProcessConfig(alpha=1.0, n_restarts_optimizer=20))
+2024-07-24 17:09:38,277 - INFO - Training Gaussian Process Regressor...
+2024-07-24 17:09:39,529 - INFO - Training completed.
+2024-07-24 17:09:39,532 - INFO - Model saved to C:\Users\lathourakisc\Projects\TUD\Eleonora_Alice\output\20240724_170937\gpr_model.joblib
