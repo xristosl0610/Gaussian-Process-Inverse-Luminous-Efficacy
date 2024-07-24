@@ -9,4 +9,4 @@
 
 .idea/
 
-config/config_overwrite.toml
+config_overwrite.toml
