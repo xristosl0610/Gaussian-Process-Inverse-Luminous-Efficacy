@@ -51,7 +51,7 @@ def create_time_cols(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def filter_data(df: pd.DataFrame, days: (list[int, int] | tuple[int, int]),
+def filter_data(df: pd.DataFrame, days: (list[int] | tuple[int, int]),
                 month: int, year: int) -> pd.DataFrame:
     """
     Filters the DataFrame based on the specified year, month, and range of days.
