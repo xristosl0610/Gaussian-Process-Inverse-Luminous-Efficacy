@@ -1,49 +1,63 @@
-from src import DATADIR, OUTPUTDIR
+import logging
+from datetime import datetime
+from config_dataclass import load_params_from_toml, update_params_from_toml
+from joblib import dump
+from src import CONFIGDIR, DATADIR, OUTPUTDIR
 from src.preprocess import (read_data, clean_data, create_time_cols,
                             filter_data, split_train_test, scale_data,
                             make_kernel, make_gp)
 from src.plotting import plot_preds
 
 
-FILENAME = 'fivemin_data.csv'
+RUN_DIR = OUTPUTDIR.joinpath(datetime.now().strftime("%Y%m%d_%H%M%S"))
+PLOT_DIR = RUN_DIR.joinpath("plots")
 
-df = read_data(DATADIR.joinpath(FILENAME))
+for DIR in (RUN_DIR, PLOT_DIR):
+    DIR.mkdir(parents=True, exist_ok=True)
 
-df = clean_data(df, ['wmo_hr_sun_dur'],
-                {'Unnamed: 0': 'datetime',
-                 'sol altitude': 'sol_alt',
-                 'sol azimuth': 'sol_az'})
-
-df = create_time_cols(df)
-
-filter_bounds = {'days': (1, 1),
-                 'month': 3,
-                 'year': 2015}
+log_file_path = RUN_DIR.joinpath("model_training.log")
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    handlers=[logging.FileHandler(log_file_path), logging.StreamHandler()],)
 
 
-filt_df = filter_data(df,
-                      filter_bounds['days'],
-                      filter_bounds['month'],
-                      filter_bounds['year'])
+if __name__ == '__main__':
+    config = load_params_from_toml(CONFIGDIR.joinpath('config.toml'))
+    config = update_params_from_toml(config, CONFIGDIR.joinpath('config_overwrite.toml'))
 
-predictors = ["minutes", "GHE"]
+    logging.info(f"Configuration settings: {config}")
 
-target = ['GHI']
+    df = read_data(DATADIR.joinpath(config.datafiles.source))
+    df = clean_data(df, config.datafiles.drop_cols, config.datafiles.rename_dict)
+    df = create_time_cols(df)
 
-training_ratio = 0.7
+    filt_df = filter_data(df,
+                          config.filter.days,
+                          config.filter.month,
+                          config.filter.year)
+    filt_df = filt_df.loc[~(filt_df[config.train_test.target] == 0).all(axis=1)]
 
-X_train, X_test, y_train, y_test = split_train_test(filt_df, predictors, target, training_ratio)
+    X_train, X_test, y_train, y_test = split_train_test(filt_df,
+                                                        config.train_test.predictors,
+                                                        config.train_test.target,
+                                                        config.train_test.training_ratio)
 
-X_train_scaled, y_train_scaled, x_scaler, y_scaler = scale_data(X_train, y_train, mode='standard')
+    X_train_scaled, y_train_scaled, x_scaler, y_scaler = scale_data(X_train, y_train, mode=config.train_test.scaling_mode)
 
-kernel = make_kernel()
-gpr = make_gp(kernel, alpha=1., n_restarts_optimizer=20)
+    kernel = make_kernel()
+    gpr = make_gp(kernel, alpha=config.gpr.alpha, n_restarts_optimizer=config.gpr.n_restarts_optimizer,)
 
-gpr.fit(X_train_scaled, y_train_scaled)
+    logging.info("Training Gaussian Process Regressor...")
+    gpr.fit(X_train_scaled, y_train_scaled)
+    logging.info("Training completed.")
 
-y_pred, y_std = gpr.predict(x_scaler.transform(X_test), return_std=True)
+    dump(gpr, (model_path := RUN_DIR.joinpath('gpr_model.joblib')))
+    logging.info(f"Model saved to {model_path}")
 
-plot_preds(filt_df["datetime"].values,
-           filt_df[target].values,
-           y_pred, y_std, y_scaler,
-           X_train.shape[0])
+    y_pred, y_std = gpr.predict(x_scaler.transform(X_test), return_std=True)
+
+    plot_preds(filt_df['datetime'].values,
+               filt_df[config.train_test.target].values,
+               y_pred, y_std, y_scaler,
+               X_train.shape[0],
+               PLOT_DIR.joinpath('forecasting.png'))
