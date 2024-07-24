@@ -1,12 +1,3 @@
-[datafiles]
-source = "fivemin_data.csv"
 
-[filter]
-year = 2016
-
-[train_test]
-predictors = ["minutes", "GHE", "sol_az"]
-target = ["DNI"]
-training_ratio = 0.7
 
 
