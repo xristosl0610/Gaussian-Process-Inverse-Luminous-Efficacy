@@ -50,14 +50,13 @@ def plot_preds(dates: np.ndarray, y_actual: np.ndarray,
     plt.figure(figsize=plot_settings.get("figsize", (16 * CM, 8 * CM)))
     y_pred_inv = y_scaler.inverse_transform(y_pred[:, np.newaxis]).squeeze()
     y_std_inv = y_scaler.inverse_transform(y_std[:, np.newaxis]).squeeze()
-    y_actual_inv = y_scaler.inverse_transform(y_actual)
 
     plt.plot(dates, y_pred_inv, label=plot_settings.get("mean_label", "mean"))
     plt.fill_between(dates, y_pred_inv + 2 * y_std_inv, y_pred_inv - 2 * y_std_inv, alpha=0.2,
                      label=plot_settings.get("std_label", r'mean $\pm$ 2 std'))
     plt.axvspan(dates[0], dates[train_size], alpha=0.08, color='k')
     plt.axvline(dates[train_size], linestyle='--', c='k')
-    plt.plot(dates, y_actual_inv, plot_settings.get("actual_marker", 'rx'), markersize=2.,
+    plt.plot(dates, y_actual, plot_settings.get("actual_marker", 'rx'), markersize=2.,
              label=plot_settings.get("actual_label", 'measurements'))
 
     plt.ylabel(plot_settings.get("ylabel", 'Global Horizontal Irradiance [W/m$^2$]'))
