@@ -1,3 +1,7 @@
+[run]
+name = ''
+random_seed = 64
+
 [datafiles]
 source = "fivemin_data.csv"
 drop_cols = ["wmo_hr_sun_dur"]

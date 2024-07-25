@@ -1,12 +1,43 @@
-from dataclasses import dataclass, is_dataclass, fields
+from dataclasses import dataclass, is_dataclass
 from pathlib import Path
 import toml
-from dacite import from_dict, Config as DaciteConfig
+from dacite import from_dict
 from src import CONFIGDIR
 
 
 @dataclass
+class RunConfig:
+    """
+    A dataclass to store configuration settings for a run.
+
+    Args:
+        name: A string representing the name of the run.
+        random_seed: An integer representing the random seed for reproducibility.
+
+    Returns:
+        None
+    """
+    name: str = ''
+    random_seed: int = 64
+
+
+@dataclass
 class DatafilesConfig:
+    """
+    A dataclass to store configuration settings for data files.
+
+    Args:
+        source: The path to the source data file.
+        drop_cols: A list of columns to drop from the data.
+        rename_dict: A dictionary for renaming columns, or None if no renaming is needed.
+        model_path: The path to save the model.
+
+    Returns:
+        None
+
+    Examples:
+        config = DatafilesConfig(source='data.csv', drop_cols=['col1', 'col2'], rename_dict={'old_name': 'new_name'}, model_path='model.pkl')
+    """
     source: str | Path
     drop_cols: list[str]
     rename_dict: dict | None
@@ -15,6 +46,17 @@ class DatafilesConfig:
 
 @dataclass
 class FilterBoundsConfig:
+    """
+    A dataclass to store configuration settings for filtering bounds.
+
+    Args:
+        days: A list of integers representing days.
+        month: An integer representing the month.
+        year: An integer representing the year.
+
+    Returns:
+        None
+    """
     days: list[int]
     month: int
     year: int
@@ -22,6 +64,18 @@ class FilterBoundsConfig:
 
 @dataclass
 class TrainTestConfig:
+    """
+    A dataclass to store configuration settings for training and testing data.
+
+    Args:
+        predictors: A list of strings representing predictor variables.
+        target: A list of strings representing the target variable(s).
+        training_ratio: A float representing the ratio of training data.
+        scaling_mode: A string representing the scaling mode to be used.
+
+    Returns:
+        None
+    """
     predictors: list[str]
     target: list[str]
     training_ratio: float
@@ -30,23 +84,65 @@ class TrainTestConfig:
 
 @dataclass
 class GaussianProcessConfig:
+    """
+    A dataclass to store configuration settings for Gaussian Process regression.
+
+    Args:
+        alpha: A float representing the regularization parameter.
+        n_restarts_optimizer: An integer or None, representing the number of restarts of the optimizer.
+
+    Returns:
+        None
+    """
     alpha: float
     n_restarts_optimizer: int | None
 
 
 @dataclass
+class OutputConfig:
+    """
+    A dataclass to store configuration settings for output directories.
+
+    Args:
+        run_dir: A string or Path representing the directory for run outputs.
+        plot_dir: A string or Path representing the directory for plot outputs.
+
+    Returns:
+        None
+    """
+    run_dir: (str | Path)
+    plot_dir: (str | Path)
+
+
+@dataclass
 class Config:
+    """
+    A dataclass to store various configuration settings.
+
+    Args:
+        run: An instance of RunConfig for run configuration.
+        datafiles: An instance of DatafilesConfig for data file configuration.
+        filter: An instance of FilterBoundsConfig for filtering bounds configuration.
+        train_test: An instance of TrainTestConfig for training and testing configuration.
+        gpr: An instance of GaussianProcessConfig for Gaussian Process regression configuration.
+        output: An instance of OutputConfig for output directories.
+
+    Returns:
+        None
+    """
+    run: RunConfig = RunConfig
     datafiles: DatafilesConfig = DatafilesConfig
     filter: FilterBoundsConfig = FilterBoundsConfig
     train_test: TrainTestConfig = TrainTestConfig
     gpr: GaussianProcessConfig = GaussianProcessConfig
+    output: OutputConfig = OutputConfig
 
 
 def load_params_from_toml(config_path: str | Path) -> Config:
     """
     Load the parameters of a Config object from a TOML file
     Args:
-        config_path (str | Path): The path to the config TOML file containing the default parameter values
+        config_path: The path to the config TOML file containing the default parameter values
 
     Returns:
         Config: The Config object with the default parameters.
@@ -62,8 +158,8 @@ def update_params(obj: Config, updates: dict) -> None:
     Recursively update attributes of an object based on a dictionary.
 
     Args:
-        obj (Config): The Config object whose attributes will be updated.
-        updates (dict): A dictionary containing the updates to be applied to the object's attributes.
+        obj: The Config object whose attributes will be updated.
+        updates: A dictionary containing the updates to be applied to the object's attributes.
 
     Returns:
         None
@@ -82,8 +178,8 @@ def update_params_from_toml(params: Config, toml_file: str | Path) -> Config:
     Update the parameters of a Config object from a TOML file.
 
     Args:
-        params (Config): The Config object whose parameters will be updated.
-        toml_file (str | Path): The path to the TOML file containing parameter updates.
+        params: The Config object whose parameters will be updated.
+        toml_file: The path to the TOML file containing parameter updates.
 
     Returns:
         Config: The Config object with updated parameters.
