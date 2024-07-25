@@ -1,6 +1,8 @@
 import logging
+import random
+from pathlib import Path
 from datetime import datetime
-from config_dataclass import load_params_from_toml, update_params_from_toml
+from config_dataclass import Config, load_params_from_toml, update_params_from_toml
 from joblib import dump
 from src import CONFIGDIR, DATADIR, OUTPUTDIR
 from src.preprocess import (read_data, clean_data, create_time_cols,
@@ -9,23 +11,51 @@ from src.preprocess import (read_data, clean_data, create_time_cols,
 from src.plotting import plot_preds
 
 
-RUN_DIR = OUTPUTDIR.joinpath(datetime.now().strftime("%Y%m%d_%H%M%S"))
-PLOT_DIR = RUN_DIR.joinpath("plots")
+def setup_output_directories(_config: Config) -> None:
+    """
+    Setup the output directories for the training. Use of the pathlib.Path objects defined in src
+    Args:
+        _config (Config): the config objects with the training parameters
+    Returns:
+        None
+    """
+    timestamp_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+    RUN_DIR = OUTPUTDIR.joinpath(f"{f'{config.run.name}_' if config.run.name else ''}{timestamp_name}")
+    PLOT_DIR = RUN_DIR.joinpath("plots")
 
-for DIR in (RUN_DIR, PLOT_DIR):
-    DIR.mkdir(parents=True, exist_ok=True)
+    PLOT_DIR.mkdir(parents=True, exist_ok=True)
 
-log_file_path = RUN_DIR.joinpath("model_training.log")
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s - %(levelname)s - %(message)s",
-                    handlers=[logging.FileHandler(log_file_path), logging.StreamHandler()],)
+    setup_logging(RUN_DIR.joinpath("model_training.log"))
 
+    _config.output.run_dir = RUN_DIR
+    _config.output.plot_dir = PLOT_DIR
+
+
+def setup_logging(log_file_path: Path) -> None:
+    """
+    Setup the logger
+    Args:
+        log_file_path (Path): the path to the log file
+
+    Returns:
+        None
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_file_path), logging.StreamHandler()],
+    )
+    
 
 if __name__ == '__main__':
     config = load_params_from_toml(CONFIGDIR.joinpath('config.toml'))
     config = update_params_from_toml(config, CONFIGDIR.joinpath('config_overwrite.toml'))
+    
+    setup_output_directories(config)
 
-    logging.info(f"Configuration settings: {config}")
+    logging.info(f"Configuration settings:\n" + "\n".join(map(str, config.__dict__.values())))
+
+    random.seed(config.run.random_seed)
 
     df = read_data(DATADIR.joinpath(config.datafiles.source))
     df = clean_data(df, config.datafiles.drop_cols, config.datafiles.rename_dict)
@@ -51,7 +81,7 @@ if __name__ == '__main__':
     gpr.fit(X_train_scaled, y_train_scaled)
     logging.info("Training completed.")
 
-    dump(gpr, (model_path := RUN_DIR.joinpath('gpr_model.joblib')))
+    dump(gpr, (model_path := config.output.run_dir.joinpath('gpr_model.joblib')))
     logging.info(f"Model saved to {model_path}")
 
     y_pred, y_std = gpr.predict(x_scaler.transform(X_test), return_std=True)
@@ -60,4 +90,4 @@ if __name__ == '__main__':
                filt_df[config.train_test.target].values,
                y_pred, y_std, y_scaler,
                X_train.shape[0],
-               PLOT_DIR.joinpath('forecasting.png'))
+               config.output.plot_dir.joinpath('forecasting.png'))
