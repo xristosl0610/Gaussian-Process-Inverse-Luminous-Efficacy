@@ -65,7 +65,7 @@ def plot_preds(dates: np.ndarray, y_actual: np.ndarray,
                bbox_to_anchor=plot_settings.get("bbox_to_anchor", (0.5, 1.2)), ncols=plot_settings.get("ncols", 3))
     ax = plt.gca()
     ax.tick_params(axis='x', rotation=45)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter(plot_settings.get("date_format", '%d-%m-%y')))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter(plot_settings.get("date_format", '%H:%M')))
     ax.set_yticks(plot_settings.get("yticks", np.arange(-500, 1251, 250)))
     ax.set_yticklabels(plot_settings.get("yticklabels", np.arange(-500, 1251, 250)))
     plt.ylim(plot_settings.get("ylim", (-500, 1250)))
