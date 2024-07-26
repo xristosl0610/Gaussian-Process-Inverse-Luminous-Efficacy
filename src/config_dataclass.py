@@ -6,7 +6,22 @@ from src import CONFIGDIR
 
 
 @dataclass
-class RunConfig:
+class ConfigBase:
+    """
+    Generate a string representation of the class instance based on its attributes.
+
+    Returns:
+        str: A string representation of the class instance.
+    """
+
+    def __repr__(self):
+        class_name = self.__class__.__name__
+        attributes = ', '.join(f'{field}={getattr(self, field)}' for field in self.__annotations__)
+        return f'{class_name}({attributes})'
+
+
+@dataclass
+class RunConfig(ConfigBase):
     """
     A dataclass to store configuration settings for a run.
 
@@ -22,7 +37,7 @@ class RunConfig:
 
 
 @dataclass
-class DatafilesConfig:
+class DatafilesConfig(ConfigBase):
     """
     A dataclass to store configuration settings for data files.
 
@@ -46,7 +61,7 @@ class DatafilesConfig:
 
 
 @dataclass
-class FilterBoundsConfig:
+class FilterBoundsConfig(ConfigBase):
     """
     A dataclass to store configuration settings for filtering bounds.
 
@@ -64,7 +79,7 @@ class FilterBoundsConfig:
 
 
 @dataclass
-class TrainTestConfig:
+class TrainTestConfig(ConfigBase):
     """
     A dataclass to store configuration settings for training and testing data.
 
@@ -84,7 +99,7 @@ class TrainTestConfig:
 
 
 @dataclass
-class GaussianProcessConfig:
+class GaussianProcessConfig(ConfigBase):
     """
     A dataclass to store configuration settings for Gaussian Process regression.
 
@@ -100,7 +115,7 @@ class GaussianProcessConfig:
 
 
 @dataclass
-class OutputConfig:
+class OutputConfig(ConfigBase):
     """
     A dataclass to store configuration settings for output directories.
 
@@ -111,8 +126,8 @@ class OutputConfig:
     Returns:
         None
     """
-    run_dir: (str | Path)
-    plot_dir: (str | Path)
+    run_dir: str | Path
+    plot_dir: str | Path
 
 
 @dataclass
@@ -226,3 +241,5 @@ if __name__ == '__main__':
     config_test = load_params_from_toml(CONFIGDIR.joinpath('config.toml'))
     config_test = update_params_from_toml(config_test, CONFIGDIR.joinpath('config_overwrite.toml'))
     print(config_test)
+    # output_config = OutputConfig(run_dir='output/run', plot_dir='output/plot')
+    # print(output_config)
