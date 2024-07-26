@@ -1,4 +1,7 @@
 from pathlib import Path
+from typing import Any
+import json
+
 import numpy as np
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -17,6 +20,21 @@ def read_data(filepath: str | Path) -> pd.DataFrame:
         pd.DataFrame: The data read from the CSV file.
     """
     return pd.read_csv(filepath)
+
+
+def read_json(filepath: str | Path) -> dict[str, str]:
+    """
+    Reads a JSON file containing column descriptions and returns them as a dictionary.
+
+    Args:
+        filepath (str | Path): The path to the JSON file containing column descriptions.
+
+    Returns:
+        dict[str, str]: A dictionary mapping variable names to descriptions.
+    """
+    with open(filepath, 'r') as file:
+        col_desc = json.load(file)
+    return col_desc
 
 
 def clean_data(df: pd.DataFrame, drop_cols: list[str], rename_dict: dict[str, str]) -> pd.DataFrame:
@@ -140,3 +158,26 @@ def make_gp(kernel: Kernel, **kwargs) -> GaussianProcessRegressor:
     """
     return GaussianProcessRegressor(kernel=kernel, **kwargs)
 
+
+def rescale_data(arr_list: list[np.ndarray], scaler: StandardScaler | MinMaxScaler) -> tuple[Any, ...]:
+    """
+    Rescales a list of numpy arrays using the provided scaler.
+
+    Args:
+        arr_list (list[np.ndarray]): A list of numpy arrays to be rescaled.
+        scaler (StandardScaler | MinMaxScaler): The scaler to use for rescaling.
+
+    Returns:
+        tuple[Any, ...]: A list of rescaled numpy arrays.
+
+    Raises:
+        ValueError: If the input arrays have shapes other than 1D or 2D.
+    """
+    for arr in arr_list:
+        if len(arr.shape) > 2:
+            raise ValueError('Only 1D and 2D arrays are supported.')
+
+    return tuple(
+        scaler.inverse_transform(arr[:, np.newaxis] if len(arr.shape) == 1 else arr).squeeze()
+        for arr in arr_list
+    )

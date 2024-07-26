@@ -1,14 +1,17 @@
 import logging
 import random
 from pathlib import Path
-from datetime import datetime
-from config_dataclass import Config, load_params_from_toml, update_params_from_toml
 from joblib import dump
+from datetime import datetime
+
+from src.config_dataclass import Config, load_params_from_toml, update_params_from_toml
 from src import CONFIGDIR, DATADIR, OUTPUTDIR
-from src.preprocess import (read_data, clean_data, create_time_cols,
-                            filter_data, split_train_test, scale_data,
-                            make_kernel, make_gp)
+from src.preprocess import (read_data, clean_data, read_json,
+                            create_time_cols, filter_data,
+                            split_train_test, scale_data,
+                            make_kernel, make_gp, rescale_data)
 from src.plotting import plot_preds
+from src.postprocess import calculate_dependent_variables
 
 
 def setup_output_directories(_config: Config) -> None:
@@ -61,6 +64,8 @@ if __name__ == '__main__':
     df = clean_data(df, config.datafiles.drop_cols, config.datafiles.rename_dict)
     df = create_time_cols(df)
 
+    var_description = read_json(DATADIR.joinpath(config.datafiles.col_desc))
+
     filt_df = filter_data(df,
                           config.filter.days,
                           config.filter.month,
@@ -86,8 +91,21 @@ if __name__ == '__main__':
 
     y_pred, y_std = gpr.predict(x_scaler.transform(X_test), return_std=True)
 
+    y_pred_rescaled, y_std_rescaled = rescale_data([y_pred, y_std], y_scaler)
+
+    target_set = set(config.train_test.target)
     plot_preds(filt_df['datetime'].values,
                filt_df[config.train_test.target].values,
-               y_pred, y_std, y_scaler,
-               X_train.shape[0],
-               config.output.plot_dir.joinpath('forecasting.png'))
+               y_pred_rescaled, y_std_rescaled, X_train.shape[0],
+               config.output.plot_dir.joinpath('forecasting.png'),
+               plot_settings={'ylabels': {key: val for key, val in var_description.items() if key in target_set}})
+
+    if all(value in target_set for value in ['GHI', 'DHI', 'DNI']):
+        y_pred_post, y_std_post = calculate_dependent_variables(y_pred_rescaled, y_std_rescaled, filt_df['sol_alt'], config.train_test.target)
+
+        plot_preds(filt_df['datetime'].values,
+                   filt_df[config.train_test.target].values,
+                   y_pred_post, y_std_post, X_train.shape[0],
+                   config.output.plot_dir.joinpath('forecasting_post.png'),
+                   plot_settings={'ylabels': {key: val for key, val in var_description.items() if key in config.train_test.target}})
+
