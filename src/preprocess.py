@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 import json
 
 import numpy as np
@@ -7,6 +6,10 @@ import pandas as pd
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel, ExpSineSquared, Kernel
+
+from src.config_dataclass import Config
+
+pd.options.mode.chained_assignment = None
 
 
 def read_data(filepath: str | Path) -> pd.DataFrame:
@@ -37,6 +40,24 @@ def read_json(filepath: str | Path) -> dict[str, str]:
     return col_desc
 
 
+def preprocess_df(df: pd.DataFrame, config: Config) -> pd.DataFrame:
+    """
+    Preprocess a DataFrame based on the provided configuration settings.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame to be preprocessed.
+        config (Config): The configuration settings for data cleaning, time column creation, and data filtering.
+
+    Returns:
+        pd.DataFrame: The preprocessed DataFrame after cleaning, time column creation, and data filtering.
+    """
+    df = clean_data(df, config.datafiles.drop_cols, config.datafiles.rename_dict)
+    df = create_time_cols(df)
+    df = filter_data(df, config.filter.days, config.filter.month, config.filter.year)
+
+    return df.loc[~(df[config.train_test.target] == 0).all(axis=1)]
+
+
 def clean_data(df: pd.DataFrame, drop_cols: list[str], rename_dict: dict[str, str]) -> pd.DataFrame:
     """
     Cleans the input DataFrame by renaming columns and dropping specified columns, then removes rows with any missing values.
@@ -65,7 +86,8 @@ def create_time_cols(df: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: The DataFrame with additional 'datetime' and 'minutes' columns.
     """
     df['datetime'] = pd.to_datetime(df['datetime'], format='%Y-%m-%d %H:%M:%S')
-    df['minutes'] = (df['datetime'] - df['datetime'].iloc[0]).dt.total_seconds() / 60
+    df['minutes'] = (df['datetime'] - (base_time := df['datetime'].iloc[0])).dt.total_seconds() / 60
+    df['hours'] = (df['datetime'] - base_time).dt.total_seconds() / 3600
     return df
 
 
@@ -157,27 +179,3 @@ def make_gp(kernel: Kernel, **kwargs) -> GaussianProcessRegressor:
         GaussianProcessRegressor: A Gaussian Process regressor initialized with the provided kernel and keyword arguments.
     """
     return GaussianProcessRegressor(kernel=kernel, **kwargs)
-
-
-def rescale_data(arr_list: list[np.ndarray], scaler: StandardScaler | MinMaxScaler) -> tuple[Any, ...]:
-    """
-    Rescales a list of numpy arrays using the provided scaler.
-
-    Args:
-        arr_list (list[np.ndarray]): A list of numpy arrays to be rescaled.
-        scaler (StandardScaler | MinMaxScaler): The scaler to use for rescaling.
-
-    Returns:
-        tuple[Any, ...]: A list of rescaled numpy arrays.
-
-    Raises:
-        ValueError: If the input arrays have shapes other than 1D or 2D.
-    """
-    for arr in arr_list:
-        if len(arr.shape) > 2:
-            raise ValueError('Only 1D and 2D arrays are supported.')
-
-    return tuple(
-        scaler.inverse_transform(arr[:, np.newaxis] if len(arr.shape) == 1 else arr).squeeze()
-        for arr in arr_list
-    )

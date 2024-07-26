@@ -1,4 +1,62 @@
+import joblib
+from pathlib import Path
 import numpy as np
+from typing import Any
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.metrics import mean_squared_error
+
+
+def rescale_data(arr_list: list[np.ndarray], scaler: StandardScaler | MinMaxScaler) -> tuple[Any, ...]:
+    """
+    Rescales a list of numpy arrays using the provided scaler.
+
+    Args:
+        arr_list (list[np.ndarray]): A list of numpy arrays to be rescaled.
+        scaler (StandardScaler | MinMaxScaler): The scaler to use for rescaling.
+
+    Returns:
+        tuple[Any, ...]: A list of rescaled numpy arrays.
+
+    Raises:
+        ValueError: If the input arrays have shapes other than 1D or 2D.
+    """
+    for arr in arr_list:
+        if len(arr.shape) > 2:
+            raise ValueError('Only 1D and 2D arrays are supported.')
+
+    return tuple(
+        scaler.inverse_transform(arr[:, np.newaxis] if len(arr.shape) == 1 else arr).squeeze()
+        for arr in arr_list
+    )
+
+
+def calculate_metrics(gpr: GaussianProcessRegressor,
+                      y_true: np.ndarray, y_pred: np.ndarray, X: np.ndarray,
+                      x_scaler: StandardScaler | MinMaxScaler,
+                      y_scaler: StandardScaler | MinMaxScaler) -> tuple[float, float, float]:
+    """
+    Calculate evaluation metrics for a Gaussian Process Regressor model.
+
+    Args:
+        gpr (GaussianProcessRegressor): The trained Gaussian Process Regressor model.
+        y_true (np.ndarray): True target values.
+        y_pred (np.ndarray): Predicted target values.
+        X (np.ndarray): Input features for prediction.
+        x_scaler (StandardScaler | MinMaxScaler): Scaler for input features.
+        y_scaler (StandardScaler | MinMaxScaler): Scaler for target values.
+
+    Returns:
+        tuple[float, float, float]: A tuple containing the R^2 score, RMSE, and NRMSE metrics.
+    """
+    y_true_scaled = y_true[:, np.newaxis] if len(y_true.shape) == 1 else y_true
+    y_pred_rescaled = rescale_data([y_pred], y_scaler)
+
+    r2score = gpr.score(X=x_scaler.transform(X), y=y_scaler.transform(y_true_scaled))
+    rmse = mean_squared_error(y_true, y_pred_rescaled, squared=False)
+    nrmse = rmse / (np.abs(y_true.max() - y_true.min()))
+
+    return r2score, rmse, nrmse
 
 
 def calculate_dependent_variables(y_pred: np.ndarray, y_std: np.ndarray,
@@ -109,3 +167,28 @@ def calc_dni(ghi_mean: np.ndarray, ghi_std: np.ndarray,
     dni_std = np.sqrt(dni_variance)
 
     return dni_mean, dni_std
+
+
+def load_gpr(filepath: Path) -> GaussianProcessRegressor:
+    """
+    Load a Gaussian Process Regressor model from the specified file.
+
+    Args:
+        filepath (Path): Path to the file containing the saved model.
+
+    Returns:
+        GaussianProcessRegressor: The loaded Gaussian Process Regressor model.
+    """
+    return joblib.load(filepath)
+
+
+if __name__ == '__main__':
+    from src import OUTPUTDIR
+
+    loaded_model = load_gpr(OUTPUTDIR.joinpath('Test_20240726_154353', 'gpr_model.joblib'))
+
+    metrics = calculate_metrics(loaded_model['gpr'], )
+
+    print(loaded_model)
+
+
