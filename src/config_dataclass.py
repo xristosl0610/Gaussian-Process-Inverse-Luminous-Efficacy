@@ -42,6 +42,7 @@ class DatafilesConfig:
     drop_cols: list[str]
     rename_dict: dict | None
     model_path: str | Path
+    col_desc: str | Path
 
 
 @dataclass
@@ -188,6 +189,37 @@ def update_params_from_toml(params: Config, toml_file: str | Path) -> Config:
         config_dict = toml.load(file)
     update_params(params, config_dict)
     return params
+
+
+def delete_config_file_contents(toml_file: str | Path) -> None:
+    """
+    Delete the contents of a TOML file.
+
+    Args:
+        toml_file (str | Path): The path to the TOML file containing config parameters.
+
+    Returns:
+
+    """
+    with open(toml_file, 'w') as file:
+        toml.dump({}, file)
+
+
+def update_config_file(config_file: Path, new_config: dict):
+    """
+    Update the TOML configuration file with new values.
+
+    Args:
+        config_file (Path): The path to the TOML configuration file.
+        new_config (Dict[str, Any]): The new configuration values to update.
+    """
+    with open(config_file, 'r') as file:
+        config_dict = toml.load(file)
+
+    config_dict.update(new_config)
+
+    with open(config_file, 'w') as file:
+        toml.dump(config_dict, file)
 
 
 if __name__ == '__main__':

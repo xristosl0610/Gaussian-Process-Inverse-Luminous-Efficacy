@@ -5,8 +5,9 @@ random_seed = 64
 [datafiles]
 source = "fivemin_data.csv"
 drop_cols = ["wmo_hr_sun_dur"]
-rename_dict = {"Unnamed: 0"= "datetime", "sol altitude"= "sol_alt", "sol azimuth"= "sol_az"}
+rename_dict = {}
 model_path = "gpr_model.joblib"
+col_desc = 'variable_description.json'
 
 [filter]
 days = [1, 1]
