@@ -1,0 +1,10 @@
+2024-07-26 15:02:14,109 - INFO - Configuration settings:
+RunConfig(name='Case_5', random_seed=64)
+DatafilesConfig(source='hourly_data.csv', drop_cols=['wmo_hr_sun_dur'], rename_dict={}, model_path='gpr_model.joblib', col_desc='variable_description.json')
+FilterBoundsConfig(days=[1, 31], month=6, year=2015)
+TrainTestConfig(predictors=['hours', 'GHE'], target=['GHI', 'DHI', 'DNI'], training_ratio=0.7, scaling_mode='standard')
+GaussianProcessConfig(alpha=1.0, n_restarts_optimizer=20)
+<class 'src.config_dataclass.OutputConfig'>
+2024-07-26 15:02:14,146 - INFO - Training Gaussian Process Regressor...
+2024-07-26 15:02:20,072 - INFO - Training completed.
+2024-07-26 15:02:20,077 - INFO - Model saved to C:\Users\lathourakisc\Projects\TUD\Eleonora_Alice\output\Case_5_20240726_150214\gpr_model.joblib
