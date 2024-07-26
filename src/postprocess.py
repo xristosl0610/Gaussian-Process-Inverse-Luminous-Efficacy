@@ -32,9 +32,10 @@ def rescale_data(arr_list: list[np.ndarray], scaler: StandardScaler | MinMaxScal
 
 
 def calculate_metrics(gpr: GaussianProcessRegressor,
-                      y_true: np.ndarray, y_pred: np.ndarray, X: np.ndarray,
+                      y_true: np.ndarray, X: np.ndarray,
                       x_scaler: StandardScaler | MinMaxScaler,
-                      y_scaler: StandardScaler | MinMaxScaler) -> tuple[float, float, float]:
+                      y_scaler: StandardScaler | MinMaxScaler,
+                      y_pred: np.ndarray | None = None) -> tuple[float, float, float]:
     """
     Calculate evaluation metrics for a Gaussian Process Regressor model.
 
@@ -50,13 +51,13 @@ def calculate_metrics(gpr: GaussianProcessRegressor,
         tuple[float, float, float]: A tuple containing the R^2 score, RMSE, and NRMSE metrics.
     """
     y_true_scaled = y_true[:, np.newaxis] if len(y_true.shape) == 1 else y_true
-    y_pred_rescaled = rescale_data([y_pred], y_scaler)
+    y_pred_rescaled = rescale_data([gpr.predict(x_scaler.transform(X)) if y_pred is None else y_pred], y_scaler)
 
     r2score = gpr.score(X=x_scaler.transform(X), y=y_scaler.transform(y_true_scaled))
-    rmse = mean_squared_error(y_true, y_pred_rescaled, squared=False)
+    rmse = mean_squared_error(y_true, np.array(y_pred_rescaled).T, squared=False)
     nrmse = rmse / (np.abs(y_true.max() - y_true.min()))
 
-    return r2score, rmse, nrmse
+    return r2score, rmse.item(), nrmse.item()
 
 
 def calculate_dependent_variables(y_pred: np.ndarray, y_std: np.ndarray,
@@ -185,10 +186,12 @@ def load_gpr(filepath: Path) -> GaussianProcessRegressor:
 if __name__ == '__main__':
     from src import OUTPUTDIR
 
-    loaded_model = load_gpr(OUTPUTDIR.joinpath('Test_20240726_154353', 'gpr_model.joblib'))
+    loaded_model = load_gpr(OUTPUTDIR.joinpath('Test_20240726_164259', 'gpr_model.joblib'))
 
-    metrics = calculate_metrics(loaded_model['gpr'], )
+    metrics = calculate_metrics(loaded_model['gpr'], y_true=loaded_model['y_test'], X=loaded_model['X_test'],
+                                x_scaler=loaded_model['x_scaler'], y_scaler=loaded_model['y_scaler'])
 
     print(loaded_model)
+    print(metrics)
 
 
