@@ -1,7 +1,8 @@
-from dataclasses import dataclass, is_dataclass
+from dataclasses import dataclass
 from pathlib import Path
 import toml
 from dacite import from_dict
+from src.utils import merge_dicts
 from src import CONFIGDIR
 
 
@@ -154,56 +155,37 @@ class Config:
     output: OutputConfig = OutputConfig
 
 
-def load_params_from_toml(config_path: str | Path) -> Config:
+def create_config(config_path: str | Path, config_overwrite_path: str | Path) -> (Config, dict):
     """
     Load the parameters of a Config object from a TOML file
     Args:
-        config_path: The path to the config TOML file containing the default parameter values
+        config_path: The path to the config TOML file containing the default parameter values.
+        config_overwrite_path: The path to the config TOML file containing the parameters to be overwritten.
 
     Returns:
-        Config: The Config object with the default parameters.
+        Config: The Config object with the run's parameters.
+        dict: A dictionary containing the Config parameter values.
     """
-    with open(config_path, 'r') as file:
-        config_dict = toml.load(file)
+    config_dict = merge_toml_files(config_path, config_overwrite_path)
 
-    return from_dict(data_class=Config, data=config_dict)
+    return from_dict(data_class=Config, data=config_dict), config_dict
 
 
-def update_params(obj: Config, updates: dict) -> None:
+def merge_toml_files(base_file: Path, overwrite_file: Path) -> dict:
     """
-    Recursively update attributes of an object based on a dictionary.
+    Merge two TOML files, giving priority to the overwrite file.
 
     Args:
-        obj: The Config object whose attributes will be updated.
-        updates: A dictionary containing the updates to be applied to the object's attributes.
+        base_file (Path): Path to the base TOML file.
+        overwrite_file (Path): Path to the overwrite TOML file.
 
     Returns:
-        None
+        dict: Merged configuration.
     """
-    for key, value in updates.items():
-        if hasattr(obj, key):
-            attr = getattr(obj, key)
-            if is_dataclass(attr) and isinstance(value, dict):
-                update_params(attr, value)
-            else:
-                setattr(obj, key, value)
+    base_config = toml.load(base_file)
+    overwrite_config = toml.load(overwrite_file)
 
-
-def update_params_from_toml(params: Config, toml_file: str | Path) -> Config:
-    """
-    Update the parameters of a Config object from a TOML file.
-
-    Args:
-        params: The Config object whose parameters will be updated.
-        toml_file: The path to the TOML file containing parameter updates.
-
-    Returns:
-        Config: The Config object with updated parameters.
-    """
-    with open(toml_file, 'r') as file:
-        config_dict = toml.load(file)
-    update_params(params, config_dict)
-    return params
+    return merge_dicts(base_config, overwrite_config)
 
 
 def delete_config_file_contents(toml_file: str | Path) -> None:
@@ -237,9 +219,20 @@ def update_config_file(config_file: Path, new_config: dict):
         toml.dump(config_dict, file)
 
 
+def save_config_to_toml(config_dict: dict, filepath: Path) -> None:
+    """
+    Save the merged configuration dictionary to a TOML file.
+
+    Args:
+        config_dict (dict): Merged configuration dictionary.
+        filepath (Path): Path to the output TOML file.
+    """
+    with filepath.open('w') as f:
+        toml.dump(config_dict, f)
+
+
 if __name__ == '__main__':
-    config_test = load_params_from_toml(CONFIGDIR.joinpath('config.toml'))
-    config_test = update_params_from_toml(config_test, CONFIGDIR.joinpath('config_overwrite.toml'))
+    config_test, config_dict_test = create_config(CONFIGDIR.joinpath('config.toml'), CONFIGDIR.joinpath('config_overwrite.toml'))
     print(config_test)
-    # output_config = OutputConfig(run_dir='output/run', plot_dir='output/plot')
-    # print(output_config)
+    output_config = OutputConfig(run_dir='output/run', plot_dir='output/plot')
+    print(output_config)

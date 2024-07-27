@@ -18,7 +18,7 @@ year = 2015
 predictors = ["minutes", "GHE"]  # minutes, hours, GHE, sol_alt, sol_az, cld_ttl_amt_id
 target = ["GHI"]
 training_ratio = 0.7
-scaling_mode = "standard"
+scaling_mode = "Standard"  # Standard, MinMax
 
 [gpr]
 alpha = 1.0
