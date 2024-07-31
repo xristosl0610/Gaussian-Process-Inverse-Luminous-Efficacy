@@ -62,41 +62,36 @@ class DatafilesConfig(ConfigBase):
 
 
 @dataclass
-class FilterBoundsConfig(ConfigBase):
-    """
-    A dataclass to store configuration settings for filtering bounds.
-
-    Args:
-        days: A list of integers representing days.
-        month: An integer representing the month.
-        year: An integer representing the year.
-
-    Returns:
-        None
-    """
-    days: list[int]
-    month: int
-    year: int
-
-
-@dataclass
 class TrainTestConfig(ConfigBase):
     """
-    A dataclass to store configuration settings for training and testing data.
+    A dataclass representing configuration settings for training and testing data,
+    including predictors, target variables, time periods, and scaling mode.
 
     Args:
-        predictors: A list of strings representing predictor variables.
-        target: A list of strings representing the target variable(s).
-        training_ratio: A float representing the ratio of training data.
-        scaling_mode: A string representing the scaling mode to be used.
+        predictors: List of predictor variables.
+        target: List of target variables.
+        train_days: List of days for training data.
+        test_days: List of days for testing data.
+        train_month: List of months for training data.
+        test_month: List of months for testing data.
+        train_year: Year for training data.
+        test_year: Year for testing data.
+        training_ratio: Ratio of training data to total data.
+        scaling_mode: Mode for data scaling.
 
     Returns:
         None
     """
     predictors: list[str]
     target: list[str]
-    training_ratio: float
+    train_days: list[int]
+    train_month: list[int] | int
+    train_year: int
+    training_ratio: float | None
     scaling_mode: str
+    test_days: list[int] | int | None = None
+    test_month: list[int] | int | None = None
+    test_year: int | None = None
 
 
 @dataclass
@@ -129,6 +124,9 @@ class OutputConfig(ConfigBase):
     """
     run_dir: str | Path
     plot_dir: str | Path
+    calc_dependent_vars: bool
+    dependent_vars: list[str]
+    benchmarks: list[str]
 
 
 @dataclass
@@ -149,7 +147,6 @@ class Config:
     """
     run: RunConfig = RunConfig
     datafiles: DatafilesConfig = DatafilesConfig
-    filter: FilterBoundsConfig = FilterBoundsConfig
     train_test: TrainTestConfig = TrainTestConfig
     gpr: GaussianProcessConfig = GaussianProcessConfig
     output: OutputConfig = OutputConfig
