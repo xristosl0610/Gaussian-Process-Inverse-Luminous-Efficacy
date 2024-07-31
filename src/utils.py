@@ -36,6 +36,25 @@ def change_and_save_date_format(filepath: Path, new_format: str, col_name: str =
     df.to_csv(filepath, index=False)
 
 
+def merge_dicts(base: dict, overwrite: dict) -> dict:
+    """
+    Merge two dictionaries recursively, updating values in the base dictionary with values from the overwrite dictionary.
+
+    Args:
+        base (dict): The base dictionary to be updated.
+        overwrite (dict): The dictionary containing values to update the base dictionary.
+
+    Returns:
+        dict: The merged dictionary with updated values.
+    """
+    for key, value in overwrite.items():
+        if isinstance(value, dict) and key in base:
+            base[key] = merge_dicts(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
 if __name__ == "__main__":
 
     column_descriptions = {
