@@ -17,6 +17,9 @@ year = 2015
 [train_test]
 predictors = ["minutes", "GHE"]  # minutes, hours, GHE, sol_alt, sol_az, cld_ttl_amt_id
 target = ["GHI"]
+train_days = [1, 1]
+train_month = 3
+train_year = 2015
 training_ratio = 0.7
 scaling_mode = "Standard"  # Standard, MinMax
 
@@ -24,3 +27,9 @@ scaling_mode = "Standard"  # Standard, MinMax
 alpha = 1.0
 n_restarts_optimizer = 20
 
+[output]
+run_dir = ''
+plot_dir = ''
+calc_dependent_vars = false
+dependent_vars = []
+benchmarks = ['linear']
