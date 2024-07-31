@@ -4,12 +4,14 @@ from pathlib import Path
 from joblib import dump
 from datetime import datetime
 
-from src.config_dataclass import Config, load_params_from_toml, update_params_from_toml
-from src import CONFIGDIR, DATADIR, OUTPUTDIR
+from src.config_dataclass import Config, create_config, save_config_to_toml
+from src import CONFIGDIR, DATADIR, OUTPUTDIR, BENCHMARK_MODELS
 from src.preprocess import (read_data, read_json, preprocess_df,
                             split_train_test, scale_data, make_kernel, make_gp)
 from src.plotting import plot_preds
-from src.postprocess import rescale_data, calculate_dependent_variables
+from src.postprocess import rescale_data, calculate_metrics, save_metrics
+
+logger = logging.getLogger(__name__)
 
 
 def setup_output_directories(_config: Config) -> None:
@@ -21,12 +23,11 @@ def setup_output_directories(_config: Config) -> None:
         None
     """
     timestamp_name = datetime.now().strftime("%Y%m%d_%H%M%S")
-    RUN_DIR = OUTPUTDIR.joinpath(f"{f'{config.run.name}_' if config.run.name else ''}{timestamp_name}")
+    run_name = f"{_config.run.name}_" if _config.run.name else ""
+    RUN_DIR = OUTPUTDIR.joinpath(f"{run_name}{timestamp_name}")
     PLOT_DIR = RUN_DIR.joinpath("plots")
 
     PLOT_DIR.mkdir(parents=True, exist_ok=True)
-
-    setup_logging(RUN_DIR.joinpath("model_training.log"))
 
     _config.output.run_dir = RUN_DIR
     _config.output.plot_dir = PLOT_DIR
@@ -46,15 +47,19 @@ def setup_logging(log_file_path: Path) -> None:
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[logging.FileHandler(log_file_path), logging.StreamHandler()],
     )
-    
+
 
 if __name__ == '__main__':
-    config = load_params_from_toml(CONFIGDIR.joinpath('config.toml'))
-    config = update_params_from_toml(config, CONFIGDIR.joinpath('config_overwrite.toml'))
-    
+    config, config_dict = create_config(CONFIGDIR.joinpath('config.toml'), CONFIGDIR.joinpath('config_overwrite.toml'))
+
     setup_output_directories(config)
 
-    logging.info(f"Configuration settings:\n" + "\n".join(map(str, config.__dict__.values())))
+    save_config_to_toml(config_dict, config.output.run_dir.joinpath('config.toml'))
+
+    setup_logging(config.output.run_dir.joinpath("model_training.log"))
+
+    logger.info(f"Configuration settings:\n" +
+                "\n".join([str(value) for value in config.__dict__.values()]))
 
     random.seed(config.run.random_seed)
 
@@ -63,41 +68,38 @@ if __name__ == '__main__':
 
     filt_df = preprocess_df(df, config)
 
-    X_train, X_test, y_train, y_test = split_train_test(filt_df,
-                                                        config.train_test.predictors,
-                                                        config.train_test.target,
-                                                        config.train_test.training_ratio)
+    X_train, X_test, y_train, y_test, date_objs = split_train_test(filt_df, config)
 
     X_train_scaled, y_train_scaled, x_scaler, y_scaler = scale_data(X_train, y_train, mode=config.train_test.scaling_mode)
 
     kernel = make_kernel()
     gpr = make_gp(kernel, alpha=config.gpr.alpha, n_restarts_optimizer=config.gpr.n_restarts_optimizer,)
 
-    logging.info("Training Gaussian Process Regressor...")
+    logger.info("Training Gaussian Process Regressor...")
     gpr.fit(X_train_scaled, y_train_scaled)
-    logging.info("Training completed.")
+    logger.info("Training completed.")
 
     dump({'gpr': gpr, 'x_scaler': x_scaler, 'y_scaler': y_scaler, 'X_test': X_test, 'y_test': y_test},
          (model_path := config.output.run_dir.joinpath('gpr_model.joblib')))
-    logging.info(f"Model saved to {model_path}")
+    logger.info(f"Model saved to {model_path}")
 
     y_pred, y_std = gpr.predict(x_scaler.transform(X_test), return_std=True)
 
     y_pred_rescaled, y_std_rescaled = rescale_data([y_pred, y_std], y_scaler)
 
     target_set = set(config.train_test.target)
-    plot_preds((date_objs := filt_df['datetime'].values), y_test,
-               y_pred_rescaled, y_std_rescaled, X_train.shape[0],
-               config.output.plot_dir.joinpath('forecasting.png'),
+    plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled,
+               X_train.shape[0], config.output.plot_dir.joinpath('forecasting.png'),
                plot_settings={'ylabels': (ylabels := {key: val for key, val in var_description.items() if key in target_set}),
                               'date_format': (date_format := '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y')})
 
-    if all(value in target_set for value in ['GHI', 'DHI', 'DNI']):
-        y_pred_post, y_std_post = calculate_dependent_variables(y_pred_rescaled, y_std_rescaled,
-                                                                filt_df['sol_alt'], config.train_test.target)
+    gpr_metrics = calculate_metrics(gpr, y_true=y_test, X=X_test, x_scaler=x_scaler, y_scaler=y_scaler, y_pred=y_pred)
 
-        plot_preds(date_objs, y_test, y_pred_post, y_std_post, X_train.shape[0],
-                   config.output.plot_dir.joinpath('forecasting_post.png'),
-                   plot_settings={'ylabels': ylabels, 'date_format': date_format})
+    total_metrics = [gpr_metrics]
+    for model in config.output.benchmarks:
+        bench_mod = BENCHMARK_MODELS[model].fit(X_train_scaled, y_train_scaled)
+        y_pred = bench_mod.predict(x_scaler.transform(X_test))
+        metrics = calculate_metrics(bench_mod, y_true=y_test, X=X_test, x_scaler=x_scaler, y_scaler=y_scaler, y_pred=y_pred)
+        total_metrics.append(metrics)
 
-
+    save_metrics(total_metrics, ['GP', *config.output.benchmarks], config.output.run_dir.joinpath('metrics.csv'))
