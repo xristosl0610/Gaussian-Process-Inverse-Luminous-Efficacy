@@ -1,15 +1,24 @@
 [run]
-name = "Test"
+name = ""
 
 [datafiles]
-source = "hourly_data.csv"
+source = "fivemin_data.csv"
 
 [train_test]
-predictors = ["hours", "GHE"]
-#predictors = ["hours", "GHE", "sol_alt", "sol_az", "cld_ttl_amt_id"]
-#target = ["GHI", "DHI", 'DNI']
+predictors = [ "hours", "GHE",]
+target = [ "GHI",]
+train_days = [ 1, 31,]
+train_month = 12
+train_year = 2015
+training_ratio = 0.7
+scaling_mode = "Standard"
+#test_days = [ 1, 31,]
+#test_month = 12
+#test_year = 2016
 
-[filter]
-days = [1, 31]
-month = 6
-year = 2016
+[output]
+run_dir = ""
+plot_dir = ""
+calc_dependent_vars = false
+dependent_vars = []
+benchmarks = ['linear', 'polynomial2', 'random_forest']
