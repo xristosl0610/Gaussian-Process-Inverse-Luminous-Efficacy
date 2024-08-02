@@ -13,6 +13,9 @@ test_days = [ 1, 31,]
 test_month = 12
 test_year = 2016
 
+[gpr]
+max_iters = 2e7
+
 [output]
 benchmarks = [ "linear", "polynomial2", "random_forest",]
 cumulative = true

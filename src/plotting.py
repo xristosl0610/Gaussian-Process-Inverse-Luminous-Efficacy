@@ -148,12 +148,12 @@ if __name__ == '__main__':
     config, config_dict = create_config(CONFIGDIR.joinpath('config.toml'),
                                         CONFIGDIR.joinpath('config_overwrite.toml'))
 
-    df = read_data(DATADIR.joinpath(config.datafiles.source))
+    test_df = read_data(DATADIR.joinpath(config.datafiles.source))
     var_description = read_json(DATADIR.joinpath(config.datafiles.col_desc))
     data_cols = ('GHE', 'GHI')
     x_label = {'col': data_cols[0], 'label': var_description[data_cols[0]]}
     y_label = {'col': data_cols[1], 'label': var_description[data_cols[1]]}
-    filt_df = preprocess_df(df, config)
+    filt_df = preprocess_df(test_df, config)
 
     plot_hexbin_w_marginals(filt_df, x_label, y_label,
                             OUTPUTDIR.joinpath('jointplot.png'))

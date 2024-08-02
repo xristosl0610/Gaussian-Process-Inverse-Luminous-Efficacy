@@ -87,7 +87,6 @@ def create_time_cols(df: pd.DataFrame) -> pd.DataFrame:
     """
     df['datetime'] = pd.to_datetime(df['datetime'], format='%Y-%m-%d %H:%M:%S')
     df['base_time'] = pd.to_datetime(df['datetime'].dt.year.astype(str) + '-01-01')
-
     df['minutes'] = (df['datetime'] - df['base_time']).dt.total_seconds() / 60
     df['hours'] = (df['datetime'] - df['base_time']).dt.total_seconds() / 3600
 
@@ -125,25 +124,16 @@ def split_train_test(df: pd.DataFrame, config: Config) -> (np.ndarray, np.ndarra
     Returns:
         tuple: A tuple containing X_train, X_test, y_train, y_test and test datetime arrays.
     """
-    if config.train_test.test_days is None or config.train_test.test_month is None or config.train_test.test_year is None:
+    if config.train_test.test_days and config.train_test.test_month and config.train_test.test_year:
+        df_train = filter_data(df, config.train_test.train_days, config.train_test.train_month, config.train_test.train_year)
+        df_test = filter_data(df, config.train_test.test_days, config.train_test.test_month, config.train_test.test_year)
+        return (df_train[config.train_test.predictors].values, df_test[config.train_test.predictors].values,
+                df_train[config.train_test.target].values, df_test[config.train_test.target].values, df_test['datetime'].values)
+    else:
         df = filter_data(df, config.train_test.train_days, config.train_test.train_month, config.train_test.train_year)
         n_train = round(config.train_test.training_ratio * df.shape[0])
         X, y = df[config.train_test.predictors].values, df[config.train_test.target].values
         return X[:n_train], X, y[:n_train], y, df['datetime'].values
-    else:
-        df_train = filter_data(df,
-                               config.train_test.train_days,
-                               config.train_test.train_month,
-                               config.train_test.train_year)
-        df_test = filter_data(df,
-                              config.train_test.test_days,
-                              config.train_test.test_month,
-                              config.train_test.test_year)
-        return (df_train[config.train_test.predictors].values,
-                df_test[config.train_test.predictors].values,
-                df_train[config.train_test.target].values,
-                df_test[config.train_test.target].values,
-                df_test['datetime'].values)
 
 
 def scale_data(X_train: np.ndarray, y_train: np.ndarray, mode: str = 'Standard')\
@@ -158,19 +148,12 @@ def scale_data(X_train: np.ndarray, y_train: np.ndarray, mode: str = 'Standard')
     Returns:
         tuple: A tuple containing the scaled X_train, scaled y_train, X scaler, and y scaler.
     """
-    scaler_classes = {
-        'Standard': StandardScaler,
-        'MinMax': MinMaxScaler
-    }
-
+    scaler_classes = {'Standard': StandardScaler, 'MinMax': MinMaxScaler}
     if mode not in scaler_classes:
         raise ValueError(f"Unsupported scaling mode: {mode}. Supported modes: {list(scaler_classes.keys())}")
 
     x_scaler, y_scaler = scaler_classes[mode](), scaler_classes[mode]()
-
-    X_train_scaled, y_train_scaled = x_scaler.fit_transform(X_train), y_scaler.fit_transform(y_train)
-
-    return X_train_scaled, y_train_scaled, x_scaler, y_scaler
+    return x_scaler.fit_transform(X_train), y_scaler.fit_transform(y_train), x_scaler, y_scaler
 
 
 def make_kernel() -> Kernel:

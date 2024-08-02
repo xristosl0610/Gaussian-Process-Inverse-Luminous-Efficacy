@@ -24,13 +24,13 @@ def setup_output_directories(_config: Config) -> None:
     """
     timestamp_name = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_name = f"{_config.run.name}_" if _config.run.name else ""
-    RUN_DIR = OUTPUTDIR.joinpath(f"{run_name}{timestamp_name}")
-    PLOT_DIR = RUN_DIR.joinpath("plots")
+    run_dir = OUTPUTDIR.joinpath(f"{run_name}{timestamp_name}")
+    plot_dir = run_dir.joinpath("plots")
 
-    PLOT_DIR.mkdir(parents=True, exist_ok=True)
+    plot_dir.mkdir(parents=True, exist_ok=True)
 
-    _config.output.run_dir = RUN_DIR
-    _config.output.plot_dir = PLOT_DIR
+    _config.output.run_dir = run_dir
+    _config.output.plot_dir = plot_dir
 
 
 def setup_logging(log_file_path: Path) -> None:
@@ -49,13 +49,11 @@ def setup_logging(log_file_path: Path) -> None:
     )
 
 
-if __name__ == '__main__':
+def main():
     config, config_dict = create_config(CONFIGDIR.joinpath('config.toml'), CONFIGDIR.joinpath('config_overwrite.toml'))
 
     setup_output_directories(config)
-
     save_config_to_toml(config_dict, config.output.run_dir.joinpath('config.toml'))
-
     setup_logging(config.output.run_dir.joinpath("model_training.log"))
 
     logger.info(f"Configuration settings:\n" +
@@ -67,9 +65,7 @@ if __name__ == '__main__':
     var_description = read_json(DATADIR.joinpath(config.datafiles.col_desc))
 
     filt_df = preprocess_df(df, config)
-
     X_train, X_test, y_train, y_test, date_objs = split_train_test(filt_df, config)
-
     X_train_scaled, y_train_scaled, x_scaler, y_scaler = scale_data(X_train, y_train, mode=config.train_test.scaling_mode)
 
     kernel = make_kernel()
@@ -84,29 +80,32 @@ if __name__ == '__main__':
     logger.info(f"Model saved to {model_path}")
 
     y_pred, y_std = gpr.predict(x_scaler.transform(X_test), return_std=True)
-
     y_pred_rescaled, y_std_rescaled = rescale_data([y_pred, y_std], y_scaler)
 
     target_set = set(config.train_test.target)
-    plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled,
-               X_train.shape[0], config.output.plot_dir.joinpath('forecasting.png'),
-               plot_settings={'ylabels': (ylabels := {key: val for key, val in var_description.items() if key in target_set}),
-                              'date_format': (date_format := '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y')},
-               month_scale=config.datafiles.source == 'hourly_data.csv')
+    plot_settings = {'ylabels': {key: val for key, val in var_description.items() if key in target_set},
+                     'date_format': '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y'}
+    plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled, X_train.shape[0], config.output.plot_dir.joinpath('forecasting.png'),
+               plot_settings=plot_settings, month_scale=config.datafiles.source == 'hourly_data.csv')
+
     if config.output.cumulative:
         plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled,
                    X_train.shape[0], config.output.plot_dir.joinpath('forecasting_cumulative.png'),
-                   plot_settings={'ylabels': (ylabels := {key: val for key, val in var_description.items() if key in target_set}),
-                                  'date_format': (date_format := '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y')},
-                   month_scale=config.datafiles.source == 'hourly_data.csv', cumulative=True)
+                   plot_settings=plot_settings, month_scale=config.datafiles.source == 'hourly_data.csv', cumulative=True)
 
     gpr_metrics = calculate_metrics(gpr, y_true=y_test, X=X_test, x_scaler=x_scaler, y_scaler=y_scaler, y_pred=y_pred)
 
     total_metrics = [gpr_metrics]
     for model in config.output.benchmarks:
-        bench_mod = BENCHMARK_MODELS[model].fit(X_train_scaled, y_train_scaled)
+        if model == 'random_forest':
+            bench_mod = BENCHMARK_MODELS[model].fit(X_train_scaled, y_train_scaled.ravel())
+        else:
+            bench_mod = BENCHMARK_MODELS[model].fit(X_train_scaled, y_train_scaled)
         y_pred = bench_mod.predict(x_scaler.transform(X_test))
         metrics = calculate_metrics(bench_mod, y_true=y_test, X=X_test, x_scaler=x_scaler, y_scaler=y_scaler, y_pred=y_pred)
         total_metrics.append(metrics)
-
     save_metrics(total_metrics, ['GP', *config.output.benchmarks], config.output.run_dir.joinpath('metrics.csv'))
+
+
+if __name__ == '__main__':
+    main()
