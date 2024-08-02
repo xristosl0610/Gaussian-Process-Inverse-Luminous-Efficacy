@@ -73,7 +73,7 @@ if __name__ == '__main__':
     X_train_scaled, y_train_scaled, x_scaler, y_scaler = scale_data(X_train, y_train, mode=config.train_test.scaling_mode)
 
     kernel = make_kernel()
-    gpr = make_gp(kernel, alpha=config.gpr.alpha, n_restarts_optimizer=config.gpr.n_restarts_optimizer,)
+    gpr = make_gp(kernel, max_iters=config.gpr.max_iters, alpha=config.gpr.alpha, n_restarts_optimizer=config.gpr.n_restarts_optimizer)
 
     logger.info("Training Gaussian Process Regressor...")
     gpr.fit(X_train_scaled, y_train_scaled)
@@ -91,7 +91,14 @@ if __name__ == '__main__':
     plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled,
                X_train.shape[0], config.output.plot_dir.joinpath('forecasting.png'),
                plot_settings={'ylabels': (ylabels := {key: val for key, val in var_description.items() if key in target_set}),
-                              'date_format': (date_format := '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y')})
+                              'date_format': (date_format := '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y')},
+               month_scale=config.datafiles.source == 'hourly_data.csv')
+    if config.output.cumulative:
+        plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled,
+                   X_train.shape[0], config.output.plot_dir.joinpath('forecasting_cumulative.png'),
+                   plot_settings={'ylabels': (ylabels := {key: val for key, val in var_description.items() if key in target_set}),
+                                  'date_format': (date_format := '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y')},
+                   month_scale=config.datafiles.source == 'hourly_data.csv', cumulative=True)
 
     gpr_metrics = calculate_metrics(gpr, y_true=y_test, X=X_test, x_scaler=x_scaler, y_scaler=y_scaler, y_pred=y_pred)
 

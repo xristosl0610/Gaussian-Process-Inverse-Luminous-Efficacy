@@ -1,5 +1,5 @@
 [run]
-name = "Case_4_cumulative"
+name = "Case_4"
 
 [datafiles]
 source = "hourly_data.csv"
@@ -15,3 +15,4 @@ test_year = 2016
 
 [output]
 benchmarks = [ "linear", "polynomial2", "random_forest",]
+cumulative = true
