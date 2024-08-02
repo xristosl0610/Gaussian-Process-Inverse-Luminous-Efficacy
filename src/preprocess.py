@@ -191,15 +191,16 @@ def make_kernel() -> Kernel:
     return nonlinear_kernel + seasonal_kernel + noise_kernel
 
 
-def make_gp(kernel: Kernel, **kwargs) -> GaussianProcessRegressor:
+def make_gp(kernel: Kernel, max_iters: int | float, **kwargs) -> GPR | GaussianProcessRegressor:
     """
     Creates a Gaussian Process regressor with the specified kernel and additional keyword arguments.
 
     Args:
         kernel: The kernel function to be used in the Gaussian Process regressor.
+        max_iters: The maximum number of iteration for the optimizer.
         **kwargs: Additional keyword arguments to be passed to the GaussianProcessRegressor constructor.
 
     Returns:
-        GaussianProcessRegressor: A Gaussian Process regressor initialized with the provided kernel and keyword arguments.
+        GPR | GaussianProcessRegressor: A Gaussian Process regressor initialized with the provided kernel and keyword arguments.
     """
-    return GPR(kernel=kernel, max_iter=4e5, **kwargs)
+    return GPR(kernel=kernel, max_iter=max_iters, **kwargs)
