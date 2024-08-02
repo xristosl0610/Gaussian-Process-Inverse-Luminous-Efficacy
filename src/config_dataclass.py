@@ -94,16 +94,18 @@ class TrainTestConfig(ConfigBase):
 @dataclass
 class GaussianProcessConfig(ConfigBase):
     """
-    A dataclass to store configuration settings for Gaussian Process regression.
+    Data class for Gaussian Process configuration.
 
     Args:
         alpha: A float representing the regularization parameter.
-        n_restarts_optimizer: An integer or None, representing the number of restarts of the optimizer.
+        max_iters (float | int | None): The maximum number of iterations for optimization. Defaults to None.
+        n_restarts_optimizer (int | None): The number of restarts for the optimizer. Defaults to None.
 
     Returns:
         None
     """
     alpha: float
+    max_iters: float | int | None
     n_restarts_optimizer: int | None
 
 

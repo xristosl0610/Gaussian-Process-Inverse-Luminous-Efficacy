@@ -20,6 +20,7 @@ scaling_mode = "Standard"  # Standard, MinMax
 
 [gpr]
 alpha = 1.0
+max_iters = 1e6
 n_restarts_optimizer = 20
 
 [output]
