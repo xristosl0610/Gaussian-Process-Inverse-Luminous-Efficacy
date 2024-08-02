@@ -112,11 +112,15 @@ class GaussianProcessConfig(ConfigBase):
 @dataclass
 class OutputConfig(ConfigBase):
     """
-    A dataclass to store configuration settings for output directories.
+    Data class for output configuration.
 
     Args:
-        run_dir: A string or Path representing the directory for run outputs.
-        plot_dir: A string or Path representing the directory for plot outputs.
+        run_dir (str | Path): The directory path for storing run outputs.
+        plot_dir (str | Path): The directory path for storing plot outputs.
+        calc_dependent_vars (bool): Flag indicating whether to calculate dependent variables.
+        dependent_vars (list[str]): List of dependent variables to calculate.
+        benchmarks (list[str]): List of benchmarks to include.
+        cumulative (bool): Flag indicating whether to calculate cumulative values.
 
     Returns:
         None
@@ -126,6 +130,7 @@ class OutputConfig(ConfigBase):
     calc_dependent_vars: bool
     dependent_vars: list[str]
     benchmarks: list[str]
+    cumulative: bool
 
 
 @dataclass
