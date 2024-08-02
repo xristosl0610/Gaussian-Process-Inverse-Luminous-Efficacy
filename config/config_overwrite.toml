@@ -1,24 +1,17 @@
 [run]
-name = ""
+name = "Case_4_cumulative"
 
 [datafiles]
-source = "fivemin_data.csv"
+source = "hourly_data.csv"
 
 [train_test]
-predictors = [ "hours", "GHE",]
-target = [ "GHI",]
 train_days = [ 1, 31,]
 train_month = 12
 train_year = 2015
 training_ratio = 0.7
-scaling_mode = "Standard"
-#test_days = [ 1, 31,]
-#test_month = 12
-#test_year = 2016
+test_days = [ 1, 31,]
+test_month = 12
+test_year = 2016
 
 [output]
-run_dir = ""
-plot_dir = ""
-calc_dependent_vars = false
-dependent_vars = []
-benchmarks = ['linear', 'polynomial2', 'random_forest']
+benchmarks = [ "linear", "polynomial2", "random_forest",]
