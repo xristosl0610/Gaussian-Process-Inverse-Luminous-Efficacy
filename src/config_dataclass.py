@@ -50,9 +50,6 @@ class DatafilesConfig(ConfigBase):
 
     Returns:
         None
-
-    Examples:
-        config = DatafilesConfig(source='data.csv', drop_cols=['col1', 'col2'], rename_dict={'old_name': 'new_name'}, model_path='model.pkl')
     """
     source: str | Path
     drop_cols: list[str]
@@ -137,7 +134,6 @@ class Config:
     Args:
         run: An instance of RunConfig for run configuration.
         datafiles: An instance of DatafilesConfig for data file configuration.
-        filter: An instance of FilterBoundsConfig for filtering bounds configuration.
         train_test: An instance of TrainTestConfig for training and testing configuration.
         gpr: An instance of GaussianProcessConfig for Gaussian Process regression configuration.
         output: An instance of OutputConfig for output directories.
@@ -231,5 +227,5 @@ def save_config_to_toml(config_dict: dict, filepath: Path) -> None:
 if __name__ == '__main__':
     config_test, config_dict_test = create_config(CONFIGDIR.joinpath('config.toml'), CONFIGDIR.joinpath('config_overwrite.toml'))
     print(config_test)
-    output_config = OutputConfig(run_dir='output/run', plot_dir='output/plot')
+    output_config = OutputConfig(run_dir='output/run', plot_dir='output/plot', benchmarks=[], dependent_vars=[], calc_dependent_vars=False)
     print(output_config)
