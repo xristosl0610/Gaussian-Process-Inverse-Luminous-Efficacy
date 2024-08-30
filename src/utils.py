@@ -70,13 +70,6 @@ def expand_if_vector(vec: np.ndarray) -> np.ndarray:
     return vec[:, np.newaxis] if vec.ndim == 1 else vec
 
 
-def totuple(arr):
-    try:
-        return tuple(totuple(i) for i in arr)
-    except TypeError:
-        return arr
-
-
 if __name__ == "__main__":
 
     column_descriptions = {
