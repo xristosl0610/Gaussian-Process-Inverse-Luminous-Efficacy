@@ -3,6 +3,7 @@ import random
 from pathlib import Path
 from joblib import dump
 from datetime import datetime
+import numpy as np
 
 from src.config_dataclass import Config, create_config, save_config_to_toml
 from src import CONFIGDIR, DATADIR, OUTPUTDIR, BENCHMARK_MODELS
@@ -65,7 +66,7 @@ def main():
     var_description = read_json(DATADIR.joinpath(config.datafiles.col_desc))
 
     filt_df = preprocess_df(df, config)
-    X_train, X_test, y_train, y_test, date_objs = split_train_test(filt_df, config)
+    X_train, X_test, y_train, y_test, date_objs, _ = split_train_test(filt_df, config)
     X_train_scaled, y_train_scaled, x_scaler, y_scaler = scale_data(X_train, y_train, mode=config.train_test.scaling_mode)
 
     kernel = make_kernel()
@@ -93,7 +94,7 @@ def main():
                    X_train.shape[0], config.output.plot_dir.joinpath('forecasting_cumulative.png'),
                    plot_settings=plot_settings, month_scale=config.datafiles.source == 'hourly_data.csv', cumulative=True)
 
-    gpr_metrics = calculate_metrics(gpr, y_true=y_test, X=X_test, x_scaler=x_scaler, y_scaler=y_scaler, y_pred=y_pred)
+    gpr_metrics = calculate_metrics(y_true=y_test, y_pred=y_pred_rescaled)
 
     total_metrics = [gpr_metrics]
     for model in config.output.benchmarks:
@@ -102,9 +103,9 @@ def main():
         else:
             bench_mod = BENCHMARK_MODELS[model].fit(X_train_scaled, y_train_scaled)
         y_pred = bench_mod.predict(x_scaler.transform(X_test))
-        metrics = calculate_metrics(bench_mod, y_true=y_test, X=X_test, x_scaler=x_scaler, y_scaler=y_scaler, y_pred=y_pred)
+        metrics = calculate_metrics(y_true=y_test, y_pred=y_pred, y_scaler=y_scaler)
         total_metrics.append(metrics)
-    save_metrics(total_metrics, ['GP', *config.output.benchmarks], config.output.run_dir.joinpath('metrics.csv'))
+    save_metrics(np.stack(total_metrics, axis=1).squeeze(), ['GP', *config.output.benchmarks], config.output.run_dir.joinpath('metrics.csv'))
 
 
 if __name__ == '__main__':

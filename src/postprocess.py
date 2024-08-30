@@ -5,7 +5,8 @@ import pandas as pd
 from typing import Any
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import root_mean_squared_error, r2_score
+from src.utils import expand_if_vector
 
 
 def rescale_data(scaled_arr: list[np.ndarray] | np.ndarray, scaler: StandardScaler | MinMaxScaler) -> tuple[Any, ...] | np.ndarray:
@@ -23,67 +24,59 @@ def rescale_data(scaled_arr: list[np.ndarray] | np.ndarray, scaler: StandardScal
         ValueError: If the input arrays have shapes other than 1D or 2D.
     """
     if isinstance(scaled_arr, np.ndarray):
-        if len(scaled_arr.shape) > 2:
+        if scaled_arr.ndim > 2:
             raise ValueError('Only 1D and 2D arrays are supported.')
 
-        return scaler.inverse_transform(scaled_arr[:, np.newaxis] if len(scaled_arr.shape) == 1 else scaled_arr).squeeze()
+        return scaler.inverse_transform(expand_if_vector(scaled_arr)).squeeze()
 
     else:
         for arr in scaled_arr:
-            if len(arr.shape) > 2:
+            if arr.ndim > 2:
                 raise ValueError('Only 1D and 2D arrays are supported.')
 
-        return tuple(scaler.inverse_transform(arr[:, np.newaxis] if len(arr.shape) == 1 else arr).squeeze()
+        return tuple(scaler.inverse_transform(expand_if_vector(arr)).squeeze()
                      for arr in scaled_arr)
 
 
-def calculate_metrics(model: Any,
-                      y_true: np.ndarray, X: np.ndarray,
-                      x_scaler: StandardScaler | MinMaxScaler,
-                      y_scaler: StandardScaler | MinMaxScaler,
-                      y_pred: np.ndarray | None = None) -> tuple[float, float, float]:
+def calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray,
+                      y_scaler: StandardScaler | MinMaxScaler | None = None) -> np.ndarray:
     """
     Calculate evaluation metrics for a Gaussian Process Regressor model.
 
     Args:
-        model (Any): The trained Gaussian Process Regressor model.
         y_true (np.ndarray): True target values.
-        X (np.ndarray): Input features for prediction.
-        x_scaler (StandardScaler | MinMaxScaler): Scaler for input features.
-        y_scaler (StandardScaler | MinMaxScaler): Scaler for target values.
-        y_pred (np.ndarray | None): Predicted target values. Optional. Defaults to None.
+        y_pred (np.ndarray): Predicted target values.
+        y_scaler (StandardScaler | MinMaxScaler): Optional scaler for target values. Defaults to None.
 
     Returns:
-        tuple[float, float, float]: A tuple containing the R^2 score, RMSE, and NRMSE metrics.
+        np.ndarray: An array containing the R^2 score, RMSE, and NRMSE metrics.
+                    If the metrics are calculated for multiple outputs, each column contains the same metric,
+                    each row correspond to a different output.
     """
-    y_true_scaled = y_true[:, np.newaxis] if len(y_true.shape) == 1 else y_true
-    y_pred_rescaled = rescale_data(model.predict(x_scaler.transform(X)) if y_pred is None else y_pred, y_scaler)
+    y_true = np.atleast_2d(y_true).T if y_true.ndim == 1 else y_true
+    y_pred = np.atleast_2d(y_pred).T if y_pred.ndim == 1 else y_pred
 
-    # TODO Calculate the r2 score based on the function by sklearn, and NOT the gpr method
+    y_pred_rescaled = y_pred if y_scaler is None else rescale_data(y_pred, y_scaler)
 
-    r2score = model.score(X=x_scaler.transform(X), y=y_scaler.transform(y_true_scaled))
-    rmse = root_mean_squared_error(y_true, y_pred_rescaled)
-    nrmse = rmse / (np.abs(y_true.max() - y_true.min()))
+    r2 = r2_score(y_true, y_pred_rescaled, multioutput='raw_values' if y_true.ndim > 1 else 'uniform_average')
 
-    return r2score, rmse.item(), nrmse.item()
+    rmse = root_mean_squared_error(y_true, y_pred_rescaled, multioutput='raw_values' if y_true.ndim > 1 else 'uniform_average')
+
+    nrmse = rmse / np.ptp(y_true, axis=0)
+    return np.stack([r2, rmse, nrmse], axis=1) if y_true.ndim > 1 else np.array([r2, rmse, nrmse])
 
 
-def save_metrics(metrics: list[tuple[float, float, float]], model_names: list[str], output_path: Path):
+def save_metrics(metrics: np.ndarray, model_names: list[str], output_path: Path):
     """
     Save the metrics to a CSV file.
 
     Args:
-        metrics (list[tuple[float, float, float]]): A tuple containing the R^2 score, RMSE, and NRMSE metrics.
+        metrics (np.ndarray): An array containing the R^2 score, RMSE, and NRMSE metrics.
+                              If the metrics are calculated for multiple outputs, or multiple models,
+                              each column contains the same metric, each row correspond to a different output and/or model.
         model_names (list[str]): A list of model names.
         output_path (Path): The directory where the metrics should be saved.
     """
-    # metrics_df = pd.DataFrame([{
-    #     "R2 Score": metrics[0],
-    #     "RMSE": metrics[1],
-    #     "NRMSE": metrics[2]
-    # }])
-    # metrics_df.to_csv(output_path, index=False)
-
     metrics_df = pd.DataFrame(metrics, index=model_names, columns=['R2 Score', 'RMSE', 'NRMSE'])
     metrics_df.to_csv(output_path)
 
@@ -104,10 +97,9 @@ def load_gpr(filepath: Path) -> GaussianProcessRegressor:
 if __name__ == '__main__':
     from src import OUTPUTDIR
 
-    loaded_model = load_gpr(OUTPUTDIR.joinpath('Test_20240726_164259', 'gpr_model.joblib'))
-
-    test_metrics = calculate_metrics(loaded_model['gpr'], y_true=loaded_model['y_test'], X=loaded_model['X_test'],
-                                     x_scaler=loaded_model['x_scaler'], y_scaler=loaded_model['y_scaler'])
+    loaded_model = load_gpr(OUTPUTDIR.joinpath('Case_1_20240830_181708', 'gpr_model.joblib'))
+    y_pred, _ = loaded_model['gpr'].predict(loaded_model['x_scaler'].transform(loaded_model['X_test']), return_std=True)
+    test_metrics = calculate_metrics(y_true=loaded_model['y_test'], y_pred=y_pred, y_scaler=loaded_model['y_scaler'])
 
     print(loaded_model)
     print(test_metrics)
