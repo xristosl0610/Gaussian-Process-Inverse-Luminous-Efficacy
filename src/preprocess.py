@@ -113,7 +113,7 @@ def filter_data(df: pd.DataFrame, days: (list[int] | tuple[int, int]),
               (df['datetime'].dt.day <= days[1])]
 
 
-def split_train_test(df: pd.DataFrame, config: Config) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+def split_train_test(df: pd.DataFrame, config: Config) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
     """
     Splits the input DataFrame into training and testing sets based on the provided training ratio.
 
@@ -122,18 +122,19 @@ def split_train_test(df: pd.DataFrame, config: Config) -> (np.ndarray, np.ndarra
         config: Configuration settings for data cleaning, time column creation, and data filtering.
 
     Returns:
-        tuple: A tuple containing X_train, X_test, y_train, y_test and test datetime arrays.
+        tuple: A tuple containing X_train, X_test, y_train, y_test, test datetime and test solar altittude arrays.
     """
     if config.train_test.test_days and config.train_test.test_month and config.train_test.test_year:
         df_train = filter_data(df, config.train_test.train_days, config.train_test.train_month, config.train_test.train_year)
         df_test = filter_data(df, config.train_test.test_days, config.train_test.test_month, config.train_test.test_year)
         return (df_train[config.train_test.predictors].values, df_test[config.train_test.predictors].values,
-                df_train[config.train_test.target].values, df_test[config.train_test.target].values, df_test['datetime'].values)
+                df_train[config.train_test.target].values, df_test[config.train_test.target].values,
+                df_test['datetime'].values, df_test['sol_alt'].values)
     else:
         df = filter_data(df, config.train_test.train_days, config.train_test.train_month, config.train_test.train_year)
         n_train = round(config.train_test.training_ratio * df.shape[0])
         X, y = df[config.train_test.predictors].values, df[config.train_test.target].values
-        return X[:n_train], X, y[:n_train], y, df['datetime'].values
+        return X[:n_train], X, y[:n_train], y, df['datetime'].values, df['sol_alt'].values
 
 
 def scale_data(X_train: np.ndarray, y_train: np.ndarray, mode: str = 'Standard')\
