@@ -1,5 +1,7 @@
 import json
 from pathlib import Path
+
+import numpy as np
 import pandas as pd
 from src import DATADIR
 
@@ -53,6 +55,26 @@ def merge_dicts(base: dict, overwrite: dict) -> dict:
         else:
             base[key] = value
     return base
+
+
+def expand_if_vector(vec: np.ndarray) -> np.ndarray:
+    """
+        Expands a 1D numpy array into a 2D numpy array if needed.
+
+        Args:
+            vec: Input numpy array.
+
+        Returns:
+            np.ndarray: Numpy array with an additional axis if the input array is 1D.
+        """
+    return vec[:, np.newaxis] if vec.ndim == 1 else vec
+
+
+def totuple(arr):
+    try:
+        return tuple(totuple(i) for i in arr)
+    except TypeError:
+        return arr
 
 
 if __name__ == "__main__":

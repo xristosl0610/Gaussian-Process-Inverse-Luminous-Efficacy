@@ -1,6 +1,7 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.ticker import StrMethodFormatter
 import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -9,6 +10,7 @@ from src import (CM, FSIZE, TSIZE, TDIR, MAJOR, MINOR, STYLE,
                  DATADIR, CONFIGDIR, OUTPUTDIR)
 from src.config_dataclass import create_config
 from src.preprocess import read_data, read_json, preprocess_df
+from src.utils import expand_if_vector
 
 
 plt.style.use(STYLE)
@@ -60,8 +62,8 @@ def plot_preds(dates: np.ndarray, y_true: np.ndarray,
     date_format = plot_settings.get("date_format", '%H:%M')
     tick_interval = cumulative * 3750 + 250
 
-    if len(plot_settings.get('ylabels')) == 1:
-        y_pred, y_std = y_pred[:, np.newaxis], y_std[:, np.newaxis]
+    y_pred = expand_if_vector(y_pred)
+    y_std = expand_if_vector(y_std)
 
     if cumulative:
         y_true, y_pred, y_std = np.cumsum(y_true, axis=0), np.cumsum(y_pred, axis=0), np.sqrt(np.cumsum(y_std ** 2, axis=0))
@@ -82,20 +84,26 @@ def plot_preds(dates: np.ndarray, y_true: np.ndarray,
         ax = plt.gca()
         ax.tick_params(axis='x', rotation=45)
         ax.xaxis.set_major_formatter(mdates.DateFormatter(date_format))
+        ax.yaxis.set_major_formatter(StrMethodFormatter('{x:,.2}'))
 
+        if var == 'DHI':
+            tick_interval = cumulative * 3750 + 10_000
+        # TODO fix hardcoded ticks/lims
         y_min = min(np.min(y_true[:, col]), np.min(y_pred[:, col]), np.min(y_pred[:, col] - 2 * y_std[:, col]))
         y_max = max(np.max(y_true[:, col]), np.max(y_pred[:, col]), np.max(y_pred[:, col] + 2 * y_std[:, col]))
         y_max_adjusted = int(y_max // tick_interval) * tick_interval + tick_interval
         yticks = np.arange(int(y_min // tick_interval) * tick_interval, y_max_adjusted + tick_interval, tick_interval)
         ylim = (int(y_min // tick_interval) * tick_interval, y_max_adjusted)
 
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(yticks)
+        ax.set_yticks(yticks, labels=yticks)
         plt.ylim(ylim)
 
+        if var == 'DHI':
+            plt.ylim([-4000, 4000])
+
         if not month_scale:
-            plt.axvspan(dates[0], dates[train_size], alpha=0.08, color='k')
-            plt.axvline(dates[train_size], linestyle='--', c='k')
+            plt.axvspan(dates[0], dates[train_size], alpha=0.08, color='k')  # noqa
+            plt.axvline(dates[train_size], linestyle='--', c='k')  # noqa
 
             training_text = plot_settings.get("training_text", "Training data points")
             forecasting_text = plot_settings.get("forecasting_text", "Forecasting")
