@@ -60,7 +60,7 @@ def plot_preds(dates: np.ndarray, y_true: np.ndarray,
     bbox_to_anchor = plot_settings.get("bbox_to_anchor", (0.5, 1.2))
     ncols = plot_settings.get("ncols", 3)
     date_format = plot_settings.get("date_format", '%H:%M')
-    tick_interval = cumulative * 3750 + 250
+    tick_interval = cumulative * 3750 + 250  # TODO fix hardcoded ticks
 
     y_pred = expand_if_vector(y_pred)
     y_std = expand_if_vector(y_std)
@@ -87,8 +87,7 @@ def plot_preds(dates: np.ndarray, y_true: np.ndarray,
         ax.yaxis.set_major_formatter(StrMethodFormatter('{x:,.2}'))
 
         if var == 'DHI':
-            tick_interval = cumulative * 3750 + 10_000
-        # TODO fix hardcoded ticks/lims
+            tick_interval = cumulative * 3750 + 1_000  # TODO fix hardcoded yticks in case of DHI
         y_min = min(np.min(y_true[:, col]), np.min(y_pred[:, col]), np.min(y_pred[:, col] - 2 * y_std[:, col]))
         y_max = max(np.max(y_true[:, col]), np.max(y_pred[:, col]), np.max(y_pred[:, col] + 2 * y_std[:, col]))
         y_max_adjusted = int(y_max // tick_interval) * tick_interval + tick_interval
@@ -99,7 +98,7 @@ def plot_preds(dates: np.ndarray, y_true: np.ndarray,
         plt.ylim(ylim)
 
         if var == 'DHI':
-            plt.ylim([-4000, 4000])
+            plt.ylim([-4000, 4000])  # TODO fix hardcoded ylim in case of DHI
 
         if not month_scale:
             plt.axvspan(dates[0], dates[train_size], alpha=0.08, color='k')  # noqa
