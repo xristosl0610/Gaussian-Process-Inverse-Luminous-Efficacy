@@ -24,41 +24,46 @@ def main() -> None:
 
     random.seed(config.run.random_seed)
 
-    (X_train, X_test, y_train, y_test, date_objs, X_train_scaled, y_train_scaled,
-     x_scaler, y_scaler, var_description, _) = preprocess_dataset(config)
+    proc_data = preprocess_dataset(config)
 
     y_pred_rescaled, y_std_rescaled, gpr = train_models(config,
-                                                        X_train_scaled=X_train_scaled,
-                                                        y_train_scaled=y_train_scaled,
-                                                        X_test=X_test,
-                                                        x_scaler=x_scaler,
-                                                        y_scaler=y_scaler)
+                                                        X_train_scaled=proc_data.X_train_scaled,
+                                                        y_train_scaled=proc_data.y_train_scaled,
+                                                        X_test=proc_data.X_test,
+                                                        x_scaler=proc_data.x_scaler,
+                                                        y_scaler=proc_data.y_scaler)
 
-    dump({'gpr': gpr, 'x_scaler': x_scaler, 'y_scaler': y_scaler, 'X_test': X_test, 'y_test': y_test},
+    dump({'gpr': gpr,
+          'x_scaler': proc_data.x_scaler,
+          'y_scaler': proc_data.y_scaler,
+          'X_test': proc_data.X_test,
+          'y_test': proc_data.y_test},
          (model_path := config.output.run_dir.joinpath('gpr_model.joblib')))
     logger.info(f"Model saved to {model_path}")
 
     target_set = set(config.output.dependent_vars)
-    plot_settings = {'ylabels': {key: val for key, val in var_description.items() if key in target_set},
+    plot_settings = {'ylabels': {key: val for key, val in proc_data.var_description.items() if key in target_set},
                      'date_format': '%H:%M' if config.datafiles.source == 'fivemin_data.csv' else '%d-%m-%y'}
-    plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled, X_train.shape[0], config.output.plot_dir.joinpath('forecasting.png'),
+    plot_preds(proc_data.date_objs, proc_data.y_test,
+               y_pred_rescaled, y_std_rescaled, proc_data.X_train.shape[0],
+               config.output.plot_dir.joinpath('forecasting.png'),
                plot_settings=plot_settings, month_scale=config.datafiles.source == 'hourly_data.csv')
 
     if config.output.cumulative:
-        plot_preds(date_objs, y_test, y_pred_rescaled, y_std_rescaled,
-                   X_train.shape[0], config.output.plot_dir.joinpath('forecasting_cumulative.png'),
+        plot_preds(proc_data.date_objs, proc_data.y_test, y_pred_rescaled, y_std_rescaled,
+                   proc_data.X_train.shape[0], config.output.plot_dir.joinpath('forecasting_cumulative.png'),
                    plot_settings=plot_settings, month_scale=config.datafiles.source == 'hourly_data.csv', cumulative=True)
 
-    gpr_metrics = calculate_metrics(y_true=y_test, y_pred=y_pred_rescaled)
+    gpr_metrics = calculate_metrics(y_true=proc_data.y_test, y_pred=y_pred_rescaled)
 
     total_metrics = [gpr_metrics]
     for model in config.output.benchmarks:
         if model == 'random_forest':
-            bench_mod = BENCHMARK_MODELS[model].fit(X_train_scaled, y_train_scaled.ravel())
+            bench_mod = BENCHMARK_MODELS[model].fit(proc_data.X_train_scaled, proc_data.y_train_scaled.ravel())
         else:
-            bench_mod = BENCHMARK_MODELS[model].fit(X_train_scaled, y_train_scaled)
-        y_pred = bench_mod.predict(x_scaler.transform(X_test))
-        metrics = calculate_metrics(y_true=y_test, y_pred=y_pred, y_scaler=y_scaler)
+            bench_mod = BENCHMARK_MODELS[model].fit(proc_data.X_train_scaled, proc_data.y_train_scaled)
+        y_pred = bench_mod.predict(proc_data.x_scaler.transform(proc_data.X_test))
+        metrics = calculate_metrics(y_true=proc_data.y_test, y_pred=y_pred, y_scaler=proc_data.y_scaler)
         total_metrics.append(metrics)
     save_metrics(np.stack(total_metrics, axis=1).squeeze(), ['GP', *config.output.benchmarks], config.output.run_dir.joinpath('metrics.csv'))
 

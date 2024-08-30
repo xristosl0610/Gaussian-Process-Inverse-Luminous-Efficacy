@@ -8,6 +8,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 
 from src.config_dataclass import Config
 from src import OUTPUTDIR, DATADIR
+from src.datatypes import PreprocessedData
 from src.gaussian_process import GPR
 from src.preprocess import (read_data, read_json, preprocess_df,
                             split_train_test, scale_data, make_kernel, make_gp)
@@ -52,9 +53,7 @@ def setup_logging(log_file_path: Path) -> None:
     )
 
 
-def preprocess_dataset(config: Config) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                           StandardScaler | MinMaxScaler, StandardScaler | MinMaxScaler,
-                                           dict[str, str], np.ndarray):
+def preprocess_dataset(config: Config) -> PreprocessedData:
     """
     Preprocesses the dataset according to the provided configuration.
 
@@ -62,7 +61,7 @@ def preprocess_dataset(config: Config) -> (np.ndarray, np.ndarray, np.ndarray, n
         config: Configuration object containing dataset and preprocessing settings.
 
     Returns:
-        A tuple containing preprocessed data arrays, scalers, and variable descriptions.
+        A PreprocessedData object containing preprocessed data arrays, scalers, and variable descriptions.
     """
     df = read_data(DATADIR.joinpath(config.datafiles.source))
     var_description = read_json(DATADIR.joinpath(config.datafiles.col_desc))
@@ -70,8 +69,12 @@ def preprocess_dataset(config: Config) -> (np.ndarray, np.ndarray, np.ndarray, n
     X_train, X_test, y_train, y_test, date_objs, sol_alt = split_train_test(filt_df, config)
     X_train_scaled, y_train_scaled, x_scaler, y_scaler = scale_data(X_train, y_train, mode=config.train_test.scaling_mode)
 
-    return (X_train, X_test, y_train, y_test, date_objs, X_train_scaled,
-            y_train_scaled, x_scaler, y_scaler, var_description, sol_alt)
+    return PreprocessedData(
+        X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test,
+        date_objs=date_objs, X_train_scaled=X_train_scaled,
+        y_train_scaled=y_train_scaled, x_scaler=x_scaler,
+        y_scaler=y_scaler, var_description=var_description, sol_alt=sol_alt
+    )
 
 
 def train_models(config: Config, X_train_scaled: np.ndarray, y_train_scaled: np.ndarray, X_test: np.ndarray,
