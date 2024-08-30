@@ -83,12 +83,12 @@ def train_models(config: Config, X_train_scaled: np.ndarray, y_train_scaled: np.
     Trains a Gaussian Process Regressor model using the provided training data and configuration.
 
     Args:
-        config: Configuration object containing model training settings.
-        X_train_scaled: Scaled features of the training data.
-        y_train_scaled: Scaled target values of the training data.
-        X_test: Features of the test data.
-        x_scaler: Scaler used for scaling the features.
-        y_scaler: Scaler used for scaling the target values.
+        config (Config): Configuration object containing model parameters.
+        X_train_scaled (np.ndarray): Scaled training features, shape (n_samples, n_features).
+        y_train_scaled (np.ndarray): Scaled training targets, shape (n_samples, n_targets).
+        X_test (np.ndarray): Test features, shape (n_test_samples, n_features).
+        x_scaler (StandardScaler | MinMaxScaler): Scaler used for features.
+        y_scaler (StandardScaler | MinMaxScaler): Scaler used for targets.
 
     Returns:
         Tuple of predicted and standard deviation arrays for the test data.
